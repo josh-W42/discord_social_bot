@@ -1,22 +1,20 @@
 import "dotenv/config";
-import express from "express";
-import { DiscordRequest } from "./utils";
+import { APIService } from "./api";
+import { DiscordService } from "./discord";
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+/**
+ * What needs to be saved (IF THIS APPLIES TO MORE THAN ONE SERVER):
+ * 1. The Youtube Channel that someone wants tracked.
+ * 2. The id of a Guild associated with this tracking.
+ * 3. The id of a channel that the bot will post the link to.
+ */
 
-app.get("/api/test", async (req: express.Request, res: express.Response) => {
-  try {
-    const discordResponse = await DiscordRequest("/users/@me/guilds", {});
+(() => {
+  const service = new DiscordService();
 
-    const data = await discordResponse.json();
+  const api = new APIService({
+    discordService: service,
+  });
 
-    res.status(200).json(data);
-  } catch (error) {
-    console.error(error);
-  }
-});
-
-app.listen(PORT, () => {
-  console.log("Listening on PORT: ", PORT);
-});
+  api.Init();
+})();
