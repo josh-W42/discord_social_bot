@@ -3,8 +3,6 @@
 export async function DiscordRequest(endpoint: string, options: RequestInit) {
   const url = "https://discord.com/api/v10/" + endpoint;
 
-  if (options.body) options.body = JSON.stringify(options.body);
-
   const res = await fetch(url, {
     headers: {
       Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
