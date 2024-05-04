@@ -1,8 +1,94 @@
 import { Channel } from "diagnostics_channel";
-import { DiscordRequest } from "../utils";
+import {
+  DataStore,
+  DiscordRequest,
+  FIVE_MINUTES,
+  ONE_HOUR,
+  Sleep,
+} from "../utils";
 import { CreateMessagePayload, Guild } from "./types";
+import { GoogleService } from "../google";
+import fs from "fs";
+import { youtube_v3 } from "googleapis";
+
+interface DiscordServiceProps {
+  googleService: GoogleService;
+}
 
 export class DiscordService {
+  private _googleService: GoogleService;
+
+  constructor({ googleService }: DiscordServiceProps) {
+    this._googleService = googleService;
+  }
+
+  public Init() {
+    setInterval(() => {
+      // Check Youtube
+      this._googleService.GetYoutubeVideos().then((foundVideos) => {
+        // FoundVideos Should contain the last 5 videos posted.
+        let data: DataStore;
+        try {
+          data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
+        } catch (error) {
+          console.error(
+            "DiscordService: Unable to read data store file.\n Cannot proceed with Message Process...\n Terminating...",
+            error
+          );
+          return;
+        }
+
+        if (!data.lastVideoId) {
+          // If we've never posted a video before, Don't post a message
+          // but store the most recent video's id for next time.
+          try {
+            fs.writeFileSync(
+              "data.json",
+              JSON.stringify({
+                lastVideoId: foundVideos[0].id?.videoId || "",
+              })
+            );
+          } catch (error) {
+            console.error(
+              "DiscordService: Unable to update data store file.\n Cannot proceed with Message Process...\n Terminating...",
+              error
+            );
+          }
+          return;
+        }
+
+        const lastVideoIndex = foundVideos.findIndex(
+          (video) => video.id?.videoId === data.lastVideoId
+        );
+
+        if (lastVideoIndex === -1) {
+          // If a user has for some reason posted more than 5 videos in the
+          // past hour then post all 5 videos.
+          this.CreateDelayedMessages(foundVideos, FIVE_MINUTES);
+          return;
+        }
+
+        // Post new messages of all new videos with a five minute timer.
+        this.CreateDelayedMessages(
+          foundVideos.slice(0, lastVideoIndex),
+          FIVE_MINUTES
+        );
+      });
+    }, ONE_HOUR);
+  }
+
+  public async CreateDelayedMessages(
+    videos: youtube_v3.Schema$SearchResult[],
+    delay: number
+  ) {
+    for (const video of videos) {
+      this.CreateMessage({
+        content: `New video out! Come check it out! https://www.youtube.com/watch?v=${video.id?.videoId}`,
+      });
+      await Sleep(delay);
+    }
+  }
+
   private async DEBUG_GetCurrentGuilds(): Promise<Guild[]> {
     try {
       const discordResponse = await DiscordRequest("/users/@me/guilds", {});

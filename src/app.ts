@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { APIService } from "./api";
 import { DiscordService } from "./discord";
+import { GoogleService } from "./google";
+import fs from "fs";
 
 /**
  * What needs to be saved (IF THIS APPLIES TO MORE THAN ONE SERVER):
@@ -10,11 +12,28 @@ import { DiscordService } from "./discord";
  */
 
 (() => {
-  const service = new DiscordService();
-
+  const googleService = new GoogleService();
+  const discordService = new DiscordService({
+    googleService,
+  });
   const api = new APIService({
-    discordService: service,
+    discordService,
+    googleService,
   });
 
+  // Initialize "DataBase"
+  try {
+    fs.writeFileSync(
+      "data.json",
+      JSON.stringify({
+        lastVideoId: "",
+      }),
+      { flag: "wx" }
+    );
+  } catch (error) {
+    // File exists
+  }
+
+  discordService.Init();
   api.Init();
 })();
