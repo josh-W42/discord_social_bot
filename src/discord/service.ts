@@ -64,12 +64,12 @@ export class DiscordService {
         if (lastVideoIndex === -1) {
           // If a user has for some reason posted more than 5 videos in the
           // past hour then post all 5 videos.
-          this.CreateDelayedMessages(foundVideos, FIVE_MINUTES);
+          this.CreateDelayedVideoMessages(foundVideos, FIVE_MINUTES);
           return;
         }
 
         // Post new messages of all new videos with a five minute timer.
-        this.CreateDelayedMessages(
+        this.CreateDelayedVideoMessages(
           foundVideos.slice(0, lastVideoIndex),
           FIVE_MINUTES
         );
@@ -77,15 +77,17 @@ export class DiscordService {
     }, ONE_HOUR);
   }
 
-  public async CreateDelayedMessages(
+  public async CreateDelayedVideoMessages(
     videos: youtube_v3.Schema$SearchResult[],
     delay: number
   ) {
     for (const video of videos) {
-      this.CreateMessage({
-        content: `New video out! Come check it out! https://www.youtube.com/watch?v=${video.id?.videoId}`,
-      });
-      await Sleep(delay);
+      if (video.id?.videoId) {
+        this.CreateMessage({
+          content: `New video out! Come check it out! https://www.youtube.com/watch?v=${video.id?.videoId}`,
+        });
+        await Sleep(delay);
+      }
     }
   }
 
