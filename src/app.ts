@@ -49,7 +49,7 @@ import { createLogger, format, transports } from "winston";
         level: "info",
         format: combine(
           format.colorize({ all: true }),
-          format.simple(),
+          format.prettyPrint(),
           format.timestamp()
         ),
       })
