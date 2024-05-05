@@ -103,13 +103,18 @@ export class DiscordService {
     videos: youtube_v3.Schema$SearchResult[],
     delay: number
   ) {
+    let channelID =
+      process.env.NODE_ENV !== "production"
+        ? process.env.GUILD_DEBUG_CHANNEL_ID || ""
+        : process.env.GUILD_CHANNEL_ID || "";
+
     for (const video of videos) {
       if (video.id?.videoId) {
         this.CreateMessage(
           {
             content: `New video out!!! Check it out here: https://www.youtube.com/watch?v=${video.id?.videoId}`,
           },
-          process.env.GUILD_CHANNEL_ID || ""
+          channelID
         );
         await Sleep(delay);
       }
@@ -141,10 +146,10 @@ export class DiscordService {
 
   public async CreateMessage(
     data: CreateMessagePayload,
-    guildID: string
+    channelID: string
   ): Promise<void> {
     try {
-      await DiscordRequest(`/channels/${guildID}/messages`, {
+      await DiscordRequest(`/channels/${channelID}/messages`, {
         method: "POST",
         body: JSON.stringify(data),
       });
