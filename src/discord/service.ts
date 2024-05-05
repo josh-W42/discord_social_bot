@@ -27,75 +27,80 @@ export class DiscordService {
   }
 
   public Init() {
-    setInterval(() => {
-      // Check Youtube
-      this._googleService.GetYoutubeVideos().then((foundVideos) => {
-        // FoundVideos Should contain the last 5 videos posted.
-        let data: DataStore;
-        try {
-          data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
-        } catch (error) {
-          this._logger.error(
-            "Unable to read data store file. Cannot proceed with Message Process...Terminating...",
-            error
-          );
-          return;
-        }
+    setInterval(() => this.PostNewVideoMessages(), ONE_HOUR);
+  }
 
-        if (!data.lastVideoId) {
-          // If we've never posted a video before, Don't post a message
-          // but store the most recent video's id for next time.
-          try {
-            fs.writeFileSync(
-              "data.json",
-              JSON.stringify({
-                lastVideoId: foundVideos[0].id?.videoId || "",
-              })
-            );
-          } catch (error) {
-            this._logger.error(
-              "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
-              error
-            );
-          }
-          return;
-        }
+  private async PostNewVideoMessages() {
+    // Check Youtube
+    const foundVideos = await this._googleService.GetYoutubeVideos();
 
-        // Looks like a duplicate but the logic is this
-        // if there is NOT a lastVideoId we want to update the file and NOT DO ANYTHING.
-        // If there IS a lastVideoId we do still want to update the file.
-        try {
-          fs.writeFileSync(
-            "data.json",
-            JSON.stringify({
-              lastVideoId: foundVideos[0].id?.videoId || "",
-            })
-          );
-        } catch (error) {
-          this._logger.error(
-            "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
-            error
-          );
-        }
+    // FoundVideos Should contain the last 5 videos posted.
+    let data: DataStore;
+    try {
+      data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
+    } catch (error) {
+      this._logger.error(
+        "Unable to read data store file. Cannot proceed with Message Process...Terminating...",
+        error
+      );
+      return;
+    }
 
-        const lastVideoIndex = foundVideos.findIndex(
-          (video) => video.id?.videoId === data.lastVideoId
+    if (!data.lastVideoId) {
+      // If we've never posted a video before, Don't post a message
+      // but store the most recent video's id for next time.
+      try {
+        fs.writeFileSync(
+          "data.json",
+          JSON.stringify({
+            lastVideoId: foundVideos[0].id?.videoId || "",
+          })
         );
-
-        if (lastVideoIndex === -1) {
-          // If a user has for some reason posted more than 5 videos in the
-          // past hour then post all 5 videos.
-          this.CreateDelayedVideoMessages(foundVideos, FIVE_MINUTES);
-          return;
-        }
-
-        // Post new messages of all new videos with a five minute timer.
-        this.CreateDelayedVideoMessages(
-          foundVideos.slice(0, lastVideoIndex),
-          FIVE_MINUTES
+      } catch (error) {
+        this._logger.error(
+          "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
+          error
         );
-      });
-    }, ONE_HOUR);
+      }
+      return;
+    }
+
+    // Looks like a duplicate but the logic is this
+    // if there is NOT a lastVideoId we want to update the file and NOT DO ANYTHING.
+    // If there IS a lastVideoId we do still want to update the file.
+    try {
+      fs.writeFileSync(
+        "data.json",
+        JSON.stringify({
+          lastVideoId: foundVideos[0].id?.videoId || "",
+        })
+      );
+    } catch (error) {
+      this._logger.error(
+        "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
+        error
+      );
+    }
+
+    // We reverse the order so that the videos post to discord chronologically.
+    foundVideos.reverse();
+
+    const lastVideoIndex = foundVideos.findIndex(
+      (video) => video.id?.videoId === data.lastVideoId
+    );
+
+    if (lastVideoIndex === -1) {
+      // If a user has for some reason posted more than 5 videos in the
+      // past hour then post all 5 videos.
+      this.CreateDelayedVideoMessages(foundVideos, FIVE_MINUTES);
+      return;
+    }
+
+    // Post new messages of all new videos with a five minute timer.
+    this.CreateDelayedVideoMessages(
+      foundVideos.slice(lastVideoIndex + 1),
+      FIVE_MINUTES
+    );
   }
 
   public async CreateDelayedVideoMessages(
