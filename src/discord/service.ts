@@ -3,7 +3,6 @@ import {
   DataStore,
   DiscordRequest,
   FIVE_MINUTES,
-  FIVE_SECONDS,
   ONE_HOUR,
   Sleep,
 } from "../utils";
