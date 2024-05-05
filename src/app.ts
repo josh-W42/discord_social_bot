@@ -83,23 +83,25 @@ import { APIService } from "./api";
     // File exists
   }
 
-  logger.addListener("data", (chunk) => {
-    if (chunk?.level === "error" || chunk?.level === "warn") {
-      discordService.CreateMessage(
-        {
-          content: `🔴 ${chunk?.service} - Issue in: ${chunk?.microservice} - Log Level:${chunk?.level} 🔴`,
-        },
-        process.env.GUILD_DEBUG_CHANNEL_ID || ""
-      );
-    }
-  });
+  if (process.env.NODE_ENV === "production") {
+    logger.addListener("data", (chunk) => {
+      if (chunk?.level === "error" || chunk?.level === "warn") {
+        discordService.CreateMessage(
+          {
+            content: `🔴 ${chunk?.service} - Issue in: ${chunk?.microservice} - Log Level:${chunk?.level} 🔴`,
+          },
+          process.env.GUILD_DEBUG_CHANNEL_ID || ""
+        );
+      }
+    });
 
-  discordService.CreateMessage(
-    {
-      content: "🟢 Bot is UP 🟢",
-    },
-    process.env.GUILD_DEBUG_CHANNEL_ID || ""
-  );
+    discordService.CreateMessage(
+      {
+        content: "🟢 Bot is UP 🟢",
+      },
+      process.env.GUILD_DEBUG_CHANNEL_ID || ""
+    );
+  }
 
   discordService.Init();
   // Not Currently Used
