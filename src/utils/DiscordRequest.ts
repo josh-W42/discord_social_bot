@@ -1,5 +1,9 @@
-// Borrowed from Discord Example App repo (https://github.com/discord/discord-example-app/blob/main/utils.js)
-
+/**
+ * Request wrapper for making Requests to the discord API.
+ * @param endpoint - The API endpoint ex. /channels/...
+ * @param options - Request options to pass along when fetch is performed Ex. searchParams
+ * @returns - A response - Throws an error if response is not code 200
+ */
 export async function DiscordRequest(endpoint: string, options: RequestInit) {
   const url = "https://discord.com/api/v10/" + endpoint;
 
