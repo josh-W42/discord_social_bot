@@ -24,7 +24,7 @@ export class APIService {
     this._app = express();
     this._discordService = discordService;
     this._googleService = googleService;
-    this._logger = logger;
+    this._logger = logger.child({ microservice: "API" });
   }
 
   public Init() {
