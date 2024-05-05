@@ -3,6 +3,7 @@ import { DiscordService } from "./discord";
 import { GoogleService } from "./google";
 import fs from "fs";
 import { createLogger, format, transports } from "winston";
+import { APIService } from "./api";
 
 /**
  * What needs to be saved (IF THIS APPLIES TO MORE THAN ONE SERVER / GUILD):
@@ -22,7 +23,6 @@ import { createLogger, format, transports } from "winston";
         format: "YYYY-MM-DD HH:mm:ss",
       }),
       errors({ stack: true }),
-      splat(),
       json()
     ),
     defaultMeta: { service: "DNA_Bot Server" },
@@ -48,8 +48,8 @@ import { createLogger, format, transports } from "winston";
       new transports.Console({
         level: "info",
         format: combine(
-          format.colorize({ all: true }),
-          format.prettyPrint(),
+          format.simple(),
+          format.prettyPrint({ colorize: true }),
           format.timestamp()
         ),
       })
@@ -82,6 +82,24 @@ import { createLogger, format, transports } from "winston";
   } catch (error) {
     // File exists
   }
+
+  logger.addListener("data", (chunk) => {
+    if (chunk?.level === "error" || chunk?.level === "warn") {
+      discordService.CreateMessage(
+        {
+          content: `🔴 ${chunk?.service} - Issue in: ${chunk?.microservice} - Log Level:${chunk?.level} 🔴`,
+        },
+        process.env.GUILD_DEBUG_CHANNEL_ID || ""
+      );
+    }
+  });
+
+  discordService.CreateMessage(
+    {
+      content: "🟢 Bot is UP 🟢",
+    },
+    process.env.GUILD_DEBUG_CHANNEL_ID || ""
+  );
 
   discordService.Init();
   // Not Currently Used
