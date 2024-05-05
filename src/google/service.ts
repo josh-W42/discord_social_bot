@@ -1,13 +1,20 @@
 import { google, youtube_v3 } from "googleapis";
+import winston from "winston";
+
+interface GoogleServiceProps {
+  logger: winston.Logger;
+}
 
 export class GoogleService {
   private _youtube;
+  private _logger: winston.Logger;
 
-  constructor() {
+  constructor({ logger }: GoogleServiceProps) {
     this._youtube = google.youtube({
       version: "v3",
       auth: process.env.GOOGLE_API_KEY,
     });
+    this._logger = logger.child({ microservice: "GoogleService" });
   }
 
   public async GetYoutubeVideos(): Promise<youtube_v3.Schema$SearchResult[]> {
@@ -24,8 +31,8 @@ export class GoogleService {
 
       return response.data.items || [];
     } catch (error) {
-      console.error(
-        "GoogleService: Error occurred when fetching youtube videos: ",
+      this._logger.error(
+        "Error occurred when fetching youtube videos: ",
         error
       );
       return [];
