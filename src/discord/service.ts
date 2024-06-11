@@ -1,4 +1,3 @@
-import { Channel, channel } from "diagnostics_channel";
 import {
   DataStore,
   DiscordRequest,
@@ -6,7 +5,7 @@ import {
   ONE_HOUR,
   Sleep,
 } from "../utils";
-import { CreateMessagePayload, Guild } from "./types";
+import { Channel, CreateMessagePayload, Guild } from "./types";
 import { GoogleService } from "../google";
 import fs from "fs";
 import { youtube_v3 } from "googleapis";
