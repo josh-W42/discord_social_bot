@@ -20,6 +20,7 @@ interface DiscordServiceProps {
 export class DiscordService {
   private _googleService: GoogleService;
   private _logger: winston.Logger;
+  private _lastVideoID: string = "";
 
   constructor({ googleService, logger }: DiscordServiceProps) {
     this._googleService = googleService;
@@ -27,66 +28,25 @@ export class DiscordService {
   }
 
   public Init() {
+    this._lastVideoID = this._getLastVideoId();
     setInterval(() => this.PostNewVideoMessages(), ONE_HOUR);
   }
 
   private async PostNewVideoMessages() {
     // Check Youtube
+    // FoundVideos Should contain the last 5 videos posted.
     const foundVideos = await this._googleService.GetYoutubeVideos();
 
-    // FoundVideos Should contain the last 5 videos posted.
-    let data: DataStore;
-    try {
-      data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
-    } catch (error) {
-      this._logger.error(
-        "Unable to read data store file. Cannot proceed with Message Process...Terminating...",
-        error
-      );
+    if (!this._lastVideoID) {
+      this._updateLastVideoId(foundVideos[0].id?.videoId || "");
       return;
-    }
-
-    if (!data.lastVideoId) {
-      // If we've never posted a video before, Don't post a message
-      // but store the most recent video's id for next time.
-      try {
-        fs.writeFileSync(
-          "data.json",
-          JSON.stringify({
-            lastVideoId: foundVideos[0].id?.videoId || "",
-          })
-        );
-      } catch (error) {
-        this._logger.error(
-          "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
-          error
-        );
-      }
-      return;
-    }
-
-    // Looks like a duplicate but the logic is this
-    // if there is NOT a lastVideoId we want to update the file and NOT DO ANYTHING.
-    // If there IS a lastVideoId we do still want to update the file.
-    try {
-      fs.writeFileSync(
-        "data.json",
-        JSON.stringify({
-          lastVideoId: foundVideos[0].id?.videoId || "",
-        })
-      );
-    } catch (error) {
-      this._logger.error(
-        "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
-        error
-      );
     }
 
     // We reverse the order so that the videos post to discord chronologically.
     foundVideos.reverse();
 
     const lastVideoIndex = foundVideos.findIndex(
-      (video) => video.id?.videoId === data.lastVideoId
+      (video) => video.id?.videoId === this._lastVideoID
     );
 
     if (lastVideoIndex === -1) {
@@ -100,6 +60,10 @@ export class DiscordService {
     this.CreateDelayedVideoMessages(
       foundVideos.slice(lastVideoIndex + 1),
       FIVE_MINUTES
+    );
+
+    this._updateLastVideoId(
+      foundVideos[foundVideos.length - 1].id?.videoId || ""
     );
   }
 
@@ -159,6 +123,39 @@ export class DiscordService {
       });
     } catch (error) {
       this._logger.error("Error when attempting to post message.", error);
+    }
+  }
+
+  private _getLastVideoId(): string {
+    let data: DataStore;
+    try {
+      data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
+    } catch (error) {
+      this._logger.error(
+        "Unable to read data store file. Cannot proceed with Message Process...Terminating...",
+        error
+      );
+      return "";
+    }
+    return data.lastVideoId;
+  }
+
+  private _updateLastVideoId(id: string): void {
+    if (!id) return;
+
+    this._lastVideoID = id;
+    try {
+      fs.writeFileSync(
+        "data.json",
+        JSON.stringify({
+          lastVideoId: id,
+        })
+      );
+    } catch (error) {
+      this._logger.error(
+        "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
+        error
+      );
     }
   }
 }
