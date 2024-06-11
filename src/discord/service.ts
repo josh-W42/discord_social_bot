@@ -5,7 +5,7 @@ import {
   ONE_HOUR,
   Sleep,
 } from "../utils";
-import { Channel, CreateMessagePayload, Guild } from "./types";
+import { Channel, CreateMessagePayload, Guild, Message } from "./types";
 import { GoogleService } from "../google";
 import fs from "fs";
 import { youtube_v3 } from "googleapis";
@@ -155,6 +155,25 @@ export class DiscordService {
         "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
         error
       );
+    }
+  }
+
+  public async GetChannelMessages(
+    channelID: string,
+    limit: number = 5
+  ): Promise<Message[]> {
+    try {
+      const response = await DiscordRequest(
+        `/channels/${channelID}/messages?limit=${limit}`,
+        {}
+      );
+      return (await response.json()) as Message[];
+    } catch (error) {
+      this._logger.error(
+        "Error occurred when fetching channel messages: ",
+        error
+      );
+      return [];
     }
   }
 }

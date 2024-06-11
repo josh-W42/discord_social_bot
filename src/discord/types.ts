@@ -16,3 +16,7 @@ export interface Channel {
 export interface CreateMessagePayload {
   content: string;
 }
+
+export interface Message {
+  content: string;
+}
