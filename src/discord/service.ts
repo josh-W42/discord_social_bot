@@ -7,7 +7,6 @@ import {
 } from "../utils";
 import { Channel, CreateMessagePayload, Guild, Message } from "./types";
 import { GoogleService } from "../google";
-import fs from "fs";
 import { youtube_v3 } from "googleapis";
 import winston from "winston";
 
@@ -19,7 +18,7 @@ interface DiscordServiceProps {
 export class DiscordService {
   private _googleService: GoogleService;
   private _logger: winston.Logger;
-  private _lastVideoID: string = "";
+  private _recentlyPostedVideoIds: Set<string> = new Set();
 
   constructor({ googleService, logger }: DiscordServiceProps) {
     this._googleService = googleService;
@@ -27,8 +26,10 @@ export class DiscordService {
   }
 
   public Init() {
-    this._lastVideoID = this._getLastVideoId();
-    setInterval(() => this.PostNewVideoMessages(), ONE_HOUR);
+    setInterval(async () => {
+      await this._updatePostedVideos();
+      await this.PostNewVideoMessages();
+    }, ONE_HOUR);
   }
 
   private async PostNewVideoMessages() {
@@ -36,41 +37,21 @@ export class DiscordService {
     // FoundVideos Should contain the last 5 videos posted.
     const foundVideos = await this._googleService.GetYoutubeVideos();
 
-    if (!this._lastVideoID) {
-      this._updateLastVideoId(foundVideos[0].id?.videoId || "");
-      return;
-    }
-
     // We reverse the order so that the videos post to discord chronologically.
     foundVideos.reverse();
 
-    const lastVideoIndex = foundVideos.findIndex(
-      (video) => video.id?.videoId === this._lastVideoID
-    );
-
-    if (lastVideoIndex === -1) {
-      // If a user has for some reason posted more than 5 videos in the
-      // past hour then post all 5 videos.
-      this.CreateDelayedVideoMessages(foundVideos, FIVE_MINUTES);
-      return;
-    }
-
     // Post new messages of all new videos with a five minute timer.
-    this.CreateDelayedVideoMessages(
-      foundVideos.slice(lastVideoIndex + 1),
-      FIVE_MINUTES
+    const videosToPost = foundVideos.filter(
+      (video) => !this._recentlyPostedVideoIds.has(video.id?.videoId || "")
     );
-
-    this._updateLastVideoId(
-      foundVideos[foundVideos.length - 1].id?.videoId || ""
-    );
+    this.CreateDelayedVideoMessages(videosToPost, FIVE_MINUTES);
   }
 
   public async CreateDelayedVideoMessages(
     videos: youtube_v3.Schema$SearchResult[],
     delay: number
   ) {
-    let channelID =
+    const channelID =
       process.env.NODE_ENV !== "production"
         ? process.env.GUILD_DEBUG_CHANNEL_ID || ""
         : process.env.GUILD_CHANNEL_ID || "";
@@ -125,39 +106,6 @@ export class DiscordService {
     }
   }
 
-  private _getLastVideoId(): string {
-    let data: DataStore;
-    try {
-      data = JSON.parse(fs.readFileSync("data.json", "utf-8"));
-    } catch (error) {
-      this._logger.error(
-        "Unable to read data store file. Cannot proceed with Message Process...Terminating...",
-        error
-      );
-      return "";
-    }
-    return data.lastVideoId;
-  }
-
-  private _updateLastVideoId(id: string): void {
-    if (!id) return;
-
-    this._lastVideoID = id;
-    try {
-      fs.writeFileSync(
-        "data.json",
-        JSON.stringify({
-          lastVideoId: id,
-        })
-      );
-    } catch (error) {
-      this._logger.error(
-        "Unable to update data store file. Cannot proceed with Message Process... Terminating...",
-        error
-      );
-    }
-  }
-
   public async GetChannelMessages(
     channelID: string,
     limit: number = 5
@@ -175,5 +123,26 @@ export class DiscordService {
       );
       return [];
     }
+  }
+
+  private async _updatePostedVideos() {
+    const channelID =
+      process.env.NODE_ENV !== "production"
+        ? process.env.GUILD_DEBUG_CHANNEL_ID || ""
+        : process.env.GUILD_CHANNEL_ID || "";
+
+    const messages = await this.GetChannelMessages(channelID, 20);
+    this._recentlyPostedVideoIds.clear();
+    messages.forEach((message) => {
+      const url = message.content
+        .split(" ")
+        .find((word) => word.includes("www.youtube.com"));
+
+      if (url) {
+        this._recentlyPostedVideoIds.add(
+          url.split("https://www.youtube.com/watch?v=")[1]
+        );
+      }
+    });
   }
 }

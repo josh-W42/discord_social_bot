@@ -5,7 +5,7 @@
   "main": "index.js",
   "engines": {},
   "scripts": {
-    "dev": "nodemon src/app.ts --ignore data.json",
+    "dev": "nodemon src/app.ts",
     "test": "jest --coverage",
     "build": "tsc",
     "start": "node ./build/app.js"

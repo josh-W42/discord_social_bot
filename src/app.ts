@@ -46,7 +46,7 @@ import { APIService } from "./api";
   if (process.env.NODE_ENV !== "production") {
     logger.add(
       new transports.Console({
-        level: "info",
+        level: "debug",
         format: combine(
           format.simple(),
           format.prettyPrint({ colorize: true }),
