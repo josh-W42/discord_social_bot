@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { DiscordService } from "./discord";
 import { GoogleService } from "./google";
-import fs from "fs";
 import { createLogger, format, transports } from "winston";
 import { APIService } from "./api";
 
@@ -69,19 +68,6 @@ import { APIService } from "./api";
   //   googleService,
   //   logger,
   // });
-
-  // Initialize "DataBase"
-  try {
-    fs.writeFileSync(
-      "data.json",
-      JSON.stringify({
-        lastVideoId: "",
-      }),
-      { flag: "wx" }
-    );
-  } catch (error) {
-    // File exists
-  }
 
   if (process.env.NODE_ENV === "production") {
     logger.addListener("data", (chunk) => {
