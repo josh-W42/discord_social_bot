@@ -17,6 +17,12 @@ export class GoogleService {
     this._logger = logger.child({ microservice: "GoogleService" });
   }
 
+  /**
+   * Retrieves a list of YouTube search results from the specified channel, ordered by date.
+   *
+   * @return {Promise<youtube_v3.Schema$SearchResult[]>} A promise that resolves to an array of YouTube search results.
+   * If an error occurs, an empty array is returned.
+   */
   public async GetYoutubeVideos(): Promise<youtube_v3.Schema$SearchResult[]> {
     try {
       const response = await this._youtube.search.list({
